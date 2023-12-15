@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Canvas Paint App</title>
+  <style>
+    canvas {
+      border: 1px solid #000;
+      cursor: crosshair;
+    }
+
+    #resetButton {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="paintCanvas" width="400" height="400"></canvas>
+  <button id="resetButton">Reset</button>
+  <p>Result:</p>
+  <input id="res" disabled type="text">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const canvas = document.getElementById('paintCanvas');
+      const context = canvas.getContext('2d');
+      const resetButton = document.getElementById('resetButton');
+      let painting = false;
+
+      function startPosition(e) {
+        painting = true;
+        draw(e);
+      }
+
+      function endPosition() {
+        painting = false;
+        context.beginPath();
+        canvas.dispatchEvent(new Event('input'));
+        executeOnMouseUpOrOut();
+      }
+
+      function draw(e) {
+        $('#res').val('')
+        if (!painting) return;
+
+        context.lineWidth = 60;
+        context.lineCap = 'round';
+        context.strokeStyle = 'black';
+
+        const x = e.clientX || e.touches[0].clientX;
+        const y = e.clientY || e.touches[0].clientY;
+
+        context.lineTo(x - canvas.offsetLeft, y - canvas.offsetTop);
+        context.stroke();
+        context.beginPath();
+        context.moveTo(x - canvas.offsetLeft, y - canvas.offsetTop);
+        canvas.dispatchEvent(new Event('input'));
+      }
+
+      function resetCanvas() {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.dispatchEvent(new Event('input'));
+        $('#res').val('')
+      }
+
+      function executeOnMouseUpOrOut() {
+          const canvasDataUrl = canvas.toDataURL();
+        $.ajax({
+        method: 'POST',
+        url: '{% url "sendpaint" %}',
+        data: {
+          image_data: canvasDataUrl
+        },
+        success: function(response) {
+          $('#res').val(response['predicted_digit'])
+        },
+        error: function(error) {
+          console.error('Error sending image', error);
+        }
+      });
+      }
+
+      canvas.addEventListener('mousedown', startPosition);
+      canvas.addEventListener('mouseup', endPosition);
+      canvas.addEventListener('mousemove', draw);
+
+      canvas.addEventListener('touchstart', function(e) {
+        startPosition(e.touches[0]);
+      });
+
+      canvas.addEventListener('touchend', endPosition);
+      canvas.addEventListener('touchmove', function(e) {
+        draw(e.touches[0]);
+      });
+
+      resetButton.addEventListener('click', resetCanvas);
+
+      canvas.addEventListener('mouseover', function() {
+        if (painting) {
+          canvas.style.cursor = 'crosshair';
+        } else {
+          canvas.style.cursor = 'default';
+        }
+      });
+
+      canvas.addEventListener('mouseout', function() {
+        canvas.style.cursor = 'default';
+        executeOnMouseUpOrOut();
+      });
+    });
+  </script>
+</body>
+</html>
