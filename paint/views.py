@@ -8,8 +8,10 @@ from keras.models import load_model
 import numpy as np
 from PIL import Image
 
-complete_model = load_model("./complete_model.h5")
-
+try:
+    complete_model = load_model("/content/cnn/complete_model.h5")
+except Exception:
+    complete_model = load_model("./complete_model.h5")
 
 def index(request):
     return render(request, 'paint/index.html', {})
